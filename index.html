@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/redux/3.7.2/redux.min.js"></script>
     <title>Leslie's Todos/Goals App</title>
 </head>
 <body>
@@ -27,43 +28,43 @@
             return Math.random().toString(36).substring(2) + (new Date()).getTime().toString(36);
         }
             
-        // Library code
-        function createStore(reducer) {
-            // The store should have four parts
-            // 1. The state
-            // 2. Get the state.
-            // 3. Listen to changes on the state
-            // 4. update the state
+        // // Library code
+        // function createStore(reducer) {
+        //     // The store should have four parts
+        //     // 1. The state
+        //     // 2. Get the state.
+        //     // 3. Listen to changes on the state
+        //     // 4. update the state
 
-            let state;
-            const listeners = [];
+        //     let state;
+        //     const listeners = [];
 
-            const getState = () => state;
+        //     const getState = () => state;
 
-            //Keep track of state changes
-            const subscribe = (listener) => {
-                listeners.push(listener);
+        //     //Keep track of state changes
+        //     const subscribe = (listener) => {
+        //         listeners.push(listener);
 
-                //To unsubscribe
-                return () => {
-                    listeners = listeners.filter((l) => l !== listener);
-                }
-            }
+        //         //To unsubscribe
+        //         return () => {
+        //             listeners = listeners.filter((l) => l !== listener);
+        //         }
+        //     }
 
-            //Updating state
-            const dispatch = (action) => {
-                state = reducer(state, action);
+        //     //Updating state
+        //     const dispatch = (action) => {
+        //         state = reducer(state, action);
 
-                //call all stored listeners
-                listeners.forEach((listener) => listener());
-            }
+        //         //call all stored listeners
+        //         listeners.forEach((listener) => listener());
+        //     }
 
-            return {
-                getState,
-                subscribe,
-                dispatch,
-            }
-        }
+        //     return {
+        //         getState,
+        //         subscribe,
+        //         dispatch,
+        //     }
+        // }
 
         const ADD_TODO = 'ADD_TODO';
         const REMOVE_TODO = 'REMOVE_TODO';
@@ -136,14 +137,18 @@
             }
         }
 
-        function app (state = {}, action) {
-            return {
-                todos: todos(state.todos, action),
-                goals: goals(state.goals, action)
-            }
-        }
+        //combine reducers into a single root reducer
+        // function app (state = {}, action) {
+        //     return {
+        //         todos: todos(state.todos, action),
+        //         goals: goals(state.goals, action)
+        //     }
+        // }
 
-        const store = createStore(app);
+        const store = Redux.createStore(Redux.combineReducers({
+            todos,
+            goals,
+        }));
 
         store.subscribe(() => {
            const  { goals, todos } = store.getState();
