@@ -5,8 +5,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/redux/3.7.2/redux.min.js"></script>
+    <script src="https://unpkg.com/react@16.3.0-alpha.1/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@16.3.0-alpha.1/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
     <title>Leslie's Todos/Goals App</title>
   </head>
+
   <body>
     <div>
       <h1>Todo List</h1>
@@ -21,6 +25,10 @@
       <button id="goalBtn">Add Todo</button>
       <ul id="goals"></ul>
     </div>
+
+    <hr />
+
+    <div id="app"></div>
 
     <script type="text/javascript">
       function generateId() {
@@ -169,12 +177,23 @@
         return next(action);
       };
 
+      // Logger middleware to log action and new state
+      const logger = (store) => (next) => (action) => {
+        console.group(action.type);
+            console.log('The action: ', action);
+            const result = next(action);
+            console.log('The new state: ', store.getState());
+        console.groupEnd();
+
+        return result;
+      }
+
       const store = Redux.createStore(
         Redux.combineReducers({
           todos,
           goals,
         }),
-        Redux.applyMiddleware(checker)
+        Redux.applyMiddleware(checker, logger)
       );
 
       store.subscribe(() => {
@@ -264,6 +283,98 @@
 
         document.getElementById("goals").appendChild(node);
       }
+    </script>
+
+    <script type="text/babel">
+
+        function List(props) {
+            return(
+                <ul>
+                   <li>LIST</li> 
+                </ul>
+            )
+        } 
+
+        class Todos extends React.Component {
+            addItem = (event) => {
+                event.preventDefault();
+
+                const name = this.input.value;
+                this.input.value = '';
+
+                this.props.store.dispatch(addTodoAction({
+                    name,
+                    complete: false,
+                    id: generateId(),
+                }));
+
+
+            }
+
+            render() {
+                return (
+                    <div>
+                        <h1>Todos List</h1>
+                        <input
+                            type='text'
+                            placeholder='Add Todo'
+                            ref={(input) => this.input = input }
+                        />
+
+                        <button onClick={this.addItem}>Add Todo</button>
+
+                        <List />
+                    </div>
+                )
+            }
+        }       
+
+        class Goals extends React.Component {
+
+            addItem = (event) => {
+                event.preventDefault();
+                const name = this.input.value;
+                this.input.value = '';
+
+                this.props.store.dispatch(addGoalAction({
+                    name,
+                    id: generateId(),
+                }));
+            }
+            
+            render() {
+                return (
+                    <div>
+                        <h1>Goals List</h1>
+                        <input
+                            type='text'
+                            placeholder='Add Goal'
+                            ref={(input) => this.input = input }
+                        />
+
+                        <button onClick={this.addItem}>Add Goal</button>
+
+                        <List />
+                    </div>
+                )
+            }
+        } 
+
+        class App extends React.Component {
+            render() {
+                return (
+                    <div>
+                        <Todos store={this.props.store} />
+                        <Goals store={this.props.store} />
+                    </div>
+                )
+            }
+        }
+
+        ReactDOM.render(
+            <App store={store}/>,
+            document.getElementById('app')
+        )
     </script>
   </body>
 </html>
