@@ -8,6 +8,8 @@
     <script src="https://unpkg.com/react@16.3.0-alpha.1/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@16.3.0-alpha.1/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+    <script src="https://tylermcginnis.com/goals-todos-api/index.js"></script>
+    <script src="https://unpkg.com/redux-thunk@2.2.0/dist/redux-thunk.min.js"></script>
     <title>Leslie's Todos/Goals App</title>
   </head>
 
@@ -81,6 +83,7 @@
       const TOGGLE_TODO = "TOGGLE_TODO";
       const ADD_GOAL = "ADD_GOAL";
       const REMOVE_GOAL = "REMOVE_GOAL";
+      const RECEIVE_DATA = 'RECEIVE_DATA';
 
       // Action Creators
       function addTodoAction(todo) {
@@ -118,6 +121,27 @@
         };
       }
 
+      function receiveDataAction(todos, goals) {
+        return {
+            type: RECEIVE_DATA,
+            todos,
+            goals,
+        } 
+      }
+
+      //Thunk code seperating UI logic from API logic
+      function handleDeleteTodo(todo) {
+          return (dispatch) => {
+            dispatch(removeTodoAction(todo.id))
+
+            return API.deleteTodo(todo.id)
+                .catch(() => {
+                    dispatch(addTodoAction(todo));
+                    alert("Something went wrong, Try again");
+                });
+          }
+      }
+
       // App code
       // Reducer to add Todos
       function todos(state = [], action) {
@@ -132,10 +156,22 @@
                 ? todo
                 : Object.assign({}, todo, { complete: !todo.complete })
             );
-
+          case RECEIVE_DATA:
+            return action.todos;
+    
           default:
             return state;
         }
+      }
+
+      // Reducer to display loading
+      function loading(state = true, action) {
+          switch(action.type) {
+              case RECEIVE_DATA:
+                return false;
+              default:
+                return state;
+          }
       }
 
       // Reducer to add goals
@@ -145,6 +181,8 @@
             return state.concat([action.goal]);
           case REMOVE_GOAL:
             return state.filter((goal) => goal.id !== action.id);
+          case RECEIVE_DATA:
+            return action.goals;
           default:
             return state;
         }
@@ -192,8 +230,9 @@
         Redux.combineReducers({
           todos,
           goals,
+          loading,
         }),
-        Redux.applyMiddleware(checker, logger)
+        Redux.applyMiddleware(ReduxThunk.default, checker, logger)
       );
 
       store.subscribe(() => {
@@ -311,22 +350,28 @@
             addItem = (event) => {
                 event.preventDefault();
 
-                const name = this.input.value;
-                this.input.value = '';
-
-                this.props.store.dispatch(addTodoAction({
-                    name,
-                    complete: false,
-                    id: generateId(),
-                }));
+                //Calling API to add Todo Items
+                return API.saveTodo(this.input.value)
+                    .then(todo => {
+                        this.props.store.dispatch(addTodoAction(todo))
+                        this.input.value = '';
+                    })
+                    .catch(() => alert('There was an error, Try again'));
             }
 
             removeItem = (todo) => {
-                this.props.store.dispatch(removeTodoAction(todo.id));
+                this.props.store.dispatch(handleDeleteTodo(todo));
+
             }
 
             toggleItem = (id) => {
                 this.props.store.dispatch(toggleTodoAction(id));
+                
+                return API.saveTodoToggle(id)
+                        .catch(() => {
+                            this.props.store.dispatch(toggleTodoAction(id));
+                            alert('something went wrong, Try again');
+                        });
             }
 
             render() {
@@ -344,7 +389,7 @@
                         <List 
                             items={this.props.todos} 
                             remove={this.removeItem}
-                            toggle={this.toggleItem} 
+                            toggle={this.toggleItem}
                         />
                     </div>
                 )
@@ -355,17 +400,25 @@
 
             addItem = (event) => {
                 event.preventDefault();
-                const name = this.input.value;
-                this.input.value = '';
 
-                this.props.store.dispatch(addGoalAction({
-                    name,
-                    id: generateId(),
-                }));
+                //Calling API to add Todo Items
+                return API.saveGoal(this.input.value)
+                    .then(todo => {
+                        this.props.store.dispatch(addGoalAction(todo))
+                        this.input.value = '';
+                    })
+                    .catch(() => alert('There was an error, Try again'));
             }
+
 
             removeItem = (goal) => {
                 this.props.store.dispatch(removeGoalAction(goal.id));
+
+                return API.deleteGoal(goal)
+                        .catch(() => {
+                            this.props.store.dispatch(addGoalAction(goal));
+                            alert('Something went wrong. Try again');
+                        })
             }
             
             render() {
@@ -391,12 +444,24 @@
             componentDidMount() {
                 const { store } = this.props;
 
-                store.subscribe(() => this.forceUpdate())
+                Promise.all([
+                    API.fetchTodos(),
+                    API.fetchGoals()
+                ]).then(([todos, goals]) => {
+                    store.dispatch(receiveDataAction(todos, goals));
+                });
+
+                store.subscribe(() => this.forceUpdate());
+
             }
 
             render() {
                 const { store } = this.props;
-                const { todos, goals } = store.getState();
+                const { todos, goals, loading } = store.getState();
+
+                if(loading === true) {
+                    return <h1> Loading </h1>
+                }
 
                 return (
                     <div>
